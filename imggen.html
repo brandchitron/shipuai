@@ -23,6 +23,43 @@
             0%, 100% { transform: translateY(0) rotate(0deg); }
             50% { transform: translateY(-20px) rotate(5deg); }
         }
+        
+        .history-image {
+            width: 100px; 
+            height: 100px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            margin: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .history-image:hover {
+            transform: scale(1.05);
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #42a5f5, #0d47a1);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Comic Neue', cursive;
+            font-weight: bold;
+            margin-top: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
     </style>
 
     <div style="position: absolute; animation: floating 10s infinite ease-in-out; opacity: 0.7; z-index: -1; top: 10%; left: 5%; font-size: 3rem; color: #90caf9;">✧</div>
@@ -39,7 +76,7 @@
         <div style="background-color: #fefefe; padding: 25px; border-radius: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border: 3px solid #42a5f5; position: relative; overflow: hidden;">
             <div style="position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, #42a5f5, #90caf9);"></div>
             <h2 style="color: #0d47a1; margin-top: 0; font-size: 1.8rem; position: relative; display: inline-block;">Create Your Masterpiece</h2>
-            <form method="post">
+            <form id="imageForm">
                 <input type="text" id="prompt" name="prompt" placeholder="Describe your dream image in words..." required style="width: 100%; padding: 15px; border: 2px solid #90caf9; border-radius: 12px; font-size: 16px; font-family: 'Comic Neue', cursive; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">
                 <button type="submit" style="background: linear-gradient(135deg, #42a5f5, #0d47a1); color: white; border: none; padding: 12px 25px; border-radius: 50px; cursor: pointer; font-size: 18px; font-family: 'Comic Neue', cursive; font-weight: bold; margin-top: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: all 0.3s ease; position: relative; overflow: hidden;">✨ Generate Magic ✨</button>
             </form>
@@ -48,16 +85,23 @@
         <div style="background-color: #fefefe; padding: 25px; border-radius: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border: 3px solid #42a5f5; position: relative; overflow: hidden;">
             <div style="position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, #42a5f5, #90caf9);"></div>
             <h2 style="color: #0d47a1; margin-top: 0; font-size: 1.8rem; position: relative; display: inline-block;">Your Creation</h2>
-            <div style="text-align: center; padding: 40px;">
+            <div id="imagePreview" style="text-align: center; padding: 20px;">
                 <p style="font-size: 1.2rem; color: #0d47a1;">Your amazing generated image will appear here!</p>
                 <p style="font-size: 3rem; margin-top: 20px;">🎨</p>
+            </div>
+            <div id="downloadContainer" style="text-align: center; display: none;">
+                <a id="downloadBtn" class="download-btn">Download Image</a>
+            </div>
+            <div id="promptDisplay" style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px; display: none;">
+                <h3 style="color: #0d47a1; margin-top: 0;">Prompt Used:</h3>
+                <p id="currentPrompt" style="font-size: 1rem; color: #0d47a1;"></p>
             </div>
         </div>
         
         <div style="background-color: #fefefe; padding: 25px; border-radius: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border: 3px solid #42a5f5; position: relative; overflow: hidden;">
             <div style="position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, #42a5f5, #90caf9);"></div>
             <h2 style="color: #0d47a1; margin-top: 0; font-size: 1.8rem; position: relative; display: inline-block;">Your Recent Creations</h2>
-            <div style="text-align: center; padding: 30px;">
+            <div id="historyContainer" style="text-align: center; padding: 20px;">
                 <p style="font-size: 1.1rem; color: #0d47a1;">No history yet. Your generated images will magically appear here!</p>
                 <p style="font-size: 2rem; margin-top: 15px;">🪄</p>
             </div>
@@ -70,5 +114,85 @@
         <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">Image generation powered by Pollinations.ai</p>
         <p>© <script>document.write(new Date().getFullYear())</script> ShiPu Ai - All Rights Reserved</p>
     </footer>
+    
+    <script>
+        // Store generated images and prompts
+        const generatedImages = [];
+        
+        document.getElementById("imageForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const prompt = document.getElementById("prompt").value.trim();
+            if (!prompt) return;
+            
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+            
+            // Create image object with URL and prompt
+            const imageObj = {
+                url: imageUrl,
+                prompt: prompt
+            };
+            
+            // Add to history
+            generatedImages.push(imageObj);
+            updateHistory();
+            
+            // Display the generated image
+            displayImage(imageObj);
+        });
+        
+        function displayImage(imageObj) {
+            const imagePreview = document.getElementById("imagePreview");
+            const downloadContainer = document.getElementById("downloadContainer");
+            const promptDisplay = document.getElementById("promptDisplay");
+            const currentPrompt = document.getElementById("currentPrompt");
+            
+            // Update image preview
+            imagePreview.innerHTML = `
+                <img src="${imageObj.url}" alt="Generated Image" style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            `;
+            
+            // Update download button
+            const downloadBtn = document.getElementById("downloadBtn");
+            downloadBtn.href = imageObj.url;
+            downloadBtn.download = `shipu-ai-${Date.now()}.jpg`;
+            downloadContainer.style.display = "block";
+            
+            // Update prompt display
+            currentPrompt.textContent = imageObj.prompt;
+            promptDisplay.style.display = "block";
+        }
+        
+        function updateHistory() {
+            const historyContainer = document.getElementById("historyContainer");
+            
+            // Clear the "no history" message if it's the first image
+            if (generatedImages.length === 1) {
+                historyContainer.innerHTML = '';
+            }
+            
+            // Get the last generated image
+            const lastImage = generatedImages[generatedImages.length - 1];
+            
+            // Create thumbnail element
+            const imgThumbnail = document.createElement("img");
+            imgThumbnail.src = lastImage.url;
+            imgThumbnail.alt = lastImage.prompt;
+            imgThumbnail.className = "history-image";
+            imgThumbnail.dataset.prompt = lastImage.prompt;
+            imgThumbnail.dataset.url = lastImage.url;
+            
+            // Add click event to display the image when clicked
+            imgThumbnail.addEventListener("click", function() {
+                displayImage({
+                    url: this.dataset.url,
+                    prompt: this.dataset.prompt
+                });
+            });
+            
+            // Add to history container
+            historyContainer.appendChild(imgThumbnail);
+        }
+    </script>
 </body>
 </html>
